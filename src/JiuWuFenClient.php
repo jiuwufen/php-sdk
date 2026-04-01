@@ -213,6 +213,11 @@ class JiuWuFenClient
      */
     public function request(string $path, array $data = []): array
     {
+        // 处理时间戳（如果没有传入，则自动添加当前时间戳，单位：秒）
+        if (!isset($data['timestamp'])) {
+            $data['timestamp'] = (string)time();
+        }
+
         // 生成签名
         $signature = $this->signatureUtil->generateSignature($data);
         $data['token'] = $signature;
