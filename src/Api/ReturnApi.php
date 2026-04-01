@@ -6,11 +6,11 @@ use JiuWuFen\Sdk\JiuWuFenClient;
 use JiuWuFen\Sdk\Exception\ApiException;
 
 /**
- * Order API
+ * Return API
  *
  * @package JiuWuFen\Sdk\Api
  */
-class OrderApi
+class ReturnApi
 {
     /**
      * @var JiuWuFenClient 客户端实例
@@ -28,62 +28,62 @@ class OrderApi
     }
 
     /**
-     * 查询商品的寄售订单详情。注意:goods_sn、upc、order_number、batch_number 必传其中一个。
+     * 查询退货订单列表。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function consignOrderInfo(array $data = []): array
+    public function refundList(array $data = []): array
     {
-        return $this->client->request('/api_tob/consignOrderInfo/v1.0', $data);
+        return $this->client->request('/api_tob/refund/list/v1.0', $data);
     }
 
     /**
-     * 获取买家详细收货地址 (加密)。
+     * 商家确认签收退货。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function buyerAddress(array $data = []): array
+    public function refundConfirm(array $data = []): array
     {
-        return $this->client->request('/api_tob/order/buyerAddress', $data);
+        return $this->client->request('/api_tob/refund/confirmReceive', $data);
     }
 
     /**
-     * 查询自送货批次下的订单明细及查验结果。
+     * 查询买家退回的地址 (加密)。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function consignBatchOrderList(array $data = []): array
+    public function refundBuyerAddress(array $data = []): array
     {
-        return $this->client->request('/api_tob/consignBatchOrderList/v1.0', $data);
+        return $this->client->request('/api_tob/refund/backBuyerAddress', $data);
     }
 
     /**
-     * 获取挂售订单列表。
+     * 退货审核不通过时,发货退回给买家。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function getOrderList(array $data = []): array
+    public function refundSuccess(array $data = []): array
     {
-        return $this->client->request('/api_tob/getOrderList/v1.0', $data);
+        return $this->client->request('/api_tob/refund/refundSuccess', $data);
     }
 
     /**
-     * 查询直发订单列表。
+     * 查询退货订单列表详情。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function merchantOrderInfo(array $data = []): array
+    public function refundOrderInfo(array $data = []): array
     {
-        return $this->client->request('/api_tob/merchantOrderInfo/v1.0', $data);
+        return $this->client->request('/api_tob/refundOrderInfo/v1.0', $data);
     }
 }

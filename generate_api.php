@@ -2,69 +2,44 @@
 <?php
 /**
  * PHP SDK API 类生成器
+ * 自动从 api-definitions.json 生成 SDK 代码。
  */
 
 $baseDir = __DIR__ . '/src/Api';
+$apiDefinitionsPath = __DIR__ . '/../tools/api-definitions.json';
 
-// API 定义
-$apis = [
-    'Merchant' => [
-        'methods' => [
-            ['name' => 'sendSMSCaptcha', 'path' => '/api_tob/erpSendSmsCaptcha/v1.0', 'doc' => '发送短信验证码'],
-            ['name' => 'checkSMSCaptcha', 'path' => '/api_tob/erpCheckSmsCaptcha/v1.0', 'doc' => '校验短信验证码'],
-        ],
-    ],
-    'Goods' => [
-        'methods' => [
-            ['name' => 'getMerchantSkuList', 'path' => '/api_tob/merchantSkuList/v1.0', 'doc' => '查询SKU列表（绑定关系）'],
-            ['name' => 'addOrderGoods', 'path' => '/api_tob/addOrderGoods/v1.0', 'doc' => '新增商品'],
-            ['name' => 'getGoodsInfo', 'path' => '/api_tob/goodsInfo/v1.0', 'doc' => '查询商品状态信息'],
-            ['name' => 'updatePrice', 'path' => '/api_tob/updatePrice/v1.0', 'doc' => '改价'],
-            ['name' => 'cancelOrder', 'path' => '/api_tob/cancelOrder/v1.0', 'doc' => '下架商品'],
-            ['name' => 'updateSellerBargain', 'path' => '/api_tob/updateSellerBargain/v1.0', 'doc' => '卖家议价'],
-            ['name' => 'bargainSuccess', 'path' => '/api_tob/bargainSuccess/v1.0', 'doc' => '卖家接受还价'],
-            ['name' => 'queryProperties', 'path' => '/api_tob/query_properties/v1.0', 'doc' => '获取类目属性'],
-            ['name' => 'getBrandIdentifyAbility', 'path' => '/api_tob/get_brand_identify_ability/v1.0', 'doc' => '可鉴品牌查询'],
-            ['name' => 'copyOnSale', 'path' => '/api_tob/copyOnSale/v1.0', 'doc' => '复制订单上架'],
-            ['name' => 'getReferencePrice', 'path' => '/api_tob/referencePrice/v1.0', 'doc' => '订单参考价查询'],
-        ],
-    ],
-    'Inventory' => [
-        'methods' => [
-            ['name' => 'syncInventory', 'path' => '/api_tob/inventory/sync/v1.0', 'doc' => '库存同步'],
-            ['name' => 'getInventoryList', 'path' => '/api_tob/inventory/list/v1.0', 'doc' => '库存查询'],
-            ['name' => 'updateStock', 'path' => '/api_tob/updateStock/v1.0', 'doc' => '同步库存（上下架）'],
-        ],
-    ],
-    'Order' => [
-        'methods' => [
-            ['name' => 'getConsignOrderInfo', 'path' => '/api_tob/consignOrderInfo/v1.0', 'doc' => '查询商品订单信息'],
-            ['name' => 'getBuyerAddress', 'path' => '/api_tob/order/buyerAddress', 'doc' => '买家地址查询'],
-            ['name' => 'getConsignBatchOrderList', 'path' => '/api_tob/consignBatchOrderList/v1.0', 'doc' => '自送货订单明细查询'],
-            ['name' => 'getOrderList', 'path' => '/api_tob/getOrderList/v1.0', 'doc' => '获取订单列表（挂售）'],
-        ],
-    ],
-    'Delivery' => [
-        'methods' => [
-            ['name' => 'deliveryBiz', 'path' => '/api_tob/delivery/bizDelivery/v1.0', 'doc' => '发货 & 重打面单'],
-        ],
-    ],
-];
+if (!file_exists($apiDefinitionsPath)) {
+    echo "❌ 找不到 API 定义文件: {$apiDefinitionsPath}\n";
+    exit(1);
+}
 
-function generateApiClass($className, $apiDef)
+$apiDefinitions = json_decode(file_get_contents($apiDefinitionsPath), true);
+$modules = $apiDefinitions['modules'] ?? [];
+
+function toCamelCase($string) {
+    if (empty($string)) return '';
+    $words = explode('-', $string);
+    $camelCase = $words[0];
+    for ($i = 1; $i < count($words); $i++) {
+        $camelCase .= ucfirst($words[$i]);
+    }
+    return $camelCase;
+}
+
+function generateApiClass($moduleName, $apis)
 {
-    $methods = $apiDef['methods'];
+    $className = ucfirst($moduleName) . "Api";
     
     $code = "<?php\n\n";
     $code .= "namespace JiuWuFen\\Sdk\\Api;\n\n";
     $code .= "use JiuWuFen\\Sdk\\JiuWuFenClient;\n";
     $code .= "use JiuWuFen\\Sdk\\Exception\\ApiException;\n\n";
     $code .= "/**\n";
-    $code .= " * {$className} API\n";
+    $code .= " * " . ucfirst($moduleName) . " API\n";
     $code .= " *\n";
     $code .= " * @package JiuWuFen\\Sdk\\Api\n";
     $code .= " */\n";
-    $code .= "class {$className}Api\n";
+    $code .= "class {$className}\n";
     $code .= "{\n";
     $code .= "    /**\n";
     $code .= "     * @var JiuWuFenClient 客户端实例\n";
@@ -80,10 +55,10 @@ function generateApiClass($className, $apiDef)
     $code .= "        \$this->client = \$client;\n";
     $code .= "    }\n";
     
-    foreach ($methods as $method) {
-        $methodName = $method['name'];
-        $path = $method['path'];
-        $doc = $method['doc'];
+    foreach ($apis as $api) {
+        $methodName = toCamelCase($api['id']);
+        $path = $api['path'];
+        $doc = !empty($api['description']) ? $api['description'] : $api['name'];
         
         $code .= "\n";
         $code .= "    /**\n";
@@ -104,19 +79,73 @@ function generateApiClass($className, $apiDef)
     return $code;
 }
 
-// 生成 API 类
+// 清理旧的 API 文件
+if (is_dir($baseDir)) {
+    foreach (glob($baseDir . '/*.php') as $oldFile) {
+        unlink($oldFile);
+    }
+}
 if (!is_dir($baseDir)) {
     mkdir($baseDir, 0755, true);
 }
 
 echo "开始生成 PHP SDK API 类...\n";
 
-foreach ($apis as $className => $apiDef) {
-    $code = generateApiClass($className, $apiDef);
-    $filePath = $baseDir . '/' . $className . 'Api.php';
+$generatedClasses = [];
+
+foreach ($modules as $moduleName => $apis) {
+    if (empty($moduleName)) continue;
+    
+    $className = ucfirst($moduleName) . 'Api';
+    $code = generateApiClass($moduleName, $apis);
+    $filePath = $baseDir . '/' . $className . '.php';
     
     file_put_contents($filePath, $code);
-    echo "✅ 生成: Api/{$className}Api.php\n";
+    echo "✅ 生成: Api/{$className}.php\n";
+    $generatedClasses[$moduleName] = $className;
+}
+
+// 更新 JiuWuFenClient.php 的 API 注册
+$clientPath = __DIR__ . '/src/JiuWuFenClient.php';
+if (file_exists($clientPath)) {
+    $clientCode = file_get_contents($clientPath);
+
+    // 重建 use 声明块
+    $useBlock = '';
+    foreach ($generatedClasses as $modName => $cls) {
+        $useBlock .= "use JiuWuFen\\Sdk\\Api\\{$cls};\n";
+    }
+
+    // 重建属性声明
+    $propBlock = '';
+    foreach ($generatedClasses as $modName => $cls) {
+        $varName = lcfirst($cls);
+        $propBlock .= "    private {$cls} \${$varName};\n";
+    }
+
+    // 重建初始化代码
+    $initBlock = '';
+    foreach ($generatedClasses as $modName => $cls) {
+        $varName = lcfirst($cls);
+        $initBlock .= "        \$this->{$varName} = new {$cls}(\$this);\n";
+    }
+
+    // 重建 getter 方法
+    $getterBlock = '';
+    foreach ($generatedClasses as $modName => $cls) {
+        $varName = lcfirst($cls);
+        $getterBlock .= "\n    public function get{$cls}(): {$cls}\n    {\n        return \$this->{$varName};\n    }\n";
+    }
+
+    // 替换 use 导入块（从第一个 Api use 到 use JiuWuFen\Sdk\Exception）
+    $clientCode = preg_replace(
+        '/use JiuWuFen\\\\Sdk\\\\Api\\\\.*?;(\nuse JiuWuFen\\\\Sdk\\\\Api\\\\.*?;)*\n/',
+        $useBlock,
+        $clientCode
+    );
+
+    file_put_contents($clientPath, $clientCode);
+    echo "✅ 已更新: src/JiuWuFenClient.php\n";
 }
 
 echo "\n✨ 所有 API 类生成完成！\n";

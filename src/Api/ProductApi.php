@@ -6,11 +6,11 @@ use JiuWuFen\Sdk\JiuWuFenClient;
 use JiuWuFen\Sdk\Exception\ApiException;
 
 /**
- * Goods API
+ * Product API
  *
  * @package JiuWuFen\Sdk\Api
  */
-class GoodsApi
+class ProductApi
 {
     /**
      * @var JiuWuFenClient 客户端实例
@@ -28,19 +28,31 @@ class GoodsApi
     }
 
     /**
-     * 查询SKU列表（绑定关系）
+     * 定时拉取绑定关系,查询绑定关系,至少时间范围要拉取前一天的。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function getMerchantSkuList(array $data = []): array
+    public function skuListBinding(array $data = []): array
     {
         return $this->client->request('/api_tob/merchantSkuList/v1.0', $data);
     }
 
     /**
-     * 新增商品
+     * 通用查询,不限制商品绑定。
+     *
+     * @param array $data 请求数据
+     * @return array 响应数据
+     * @throws ApiException
+     */
+    public function skuListGeneral(array $data = []): array
+    {
+        return $this->client->request('/api_tob/skuList/v1.0', $data);
+    }
+
+    /**
+     * 新增商品接口。
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -52,13 +64,13 @@ class GoodsApi
     }
 
     /**
-     * 查询商品状态信息
+     * 查询商品的上架状态及详情链接。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function getGoodsInfo(array $data = []): array
+    public function goodsInfo(array $data = []): array
     {
         return $this->client->request('/api_tob/goodsInfo/v1.0', $data);
     }
@@ -88,7 +100,7 @@ class GoodsApi
     }
 
     /**
-     * 卖家议价
+     * 卖家议价 (UpdateSellerBargain)
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -100,7 +112,7 @@ class GoodsApi
     }
 
     /**
-     * 卖家接受还价
+     * 卖家接受还价 (BargainSuccess)
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -112,7 +124,7 @@ class GoodsApi
     }
 
     /**
-     * 获取类目属性
+     * 通过叶子类目 ID 获取 95 分该类目下具体的销售属性列表。
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -124,7 +136,7 @@ class GoodsApi
     }
 
     /**
-     * 可鉴品牌查询
+     * 通过一级类目 ID 和品牌名称获取 95 分可鉴品牌列表,返回前 100 个符合条件的品牌信息。支持模糊查询。
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -136,7 +148,7 @@ class GoodsApi
     }
 
     /**
-     * 复制订单上架
+     * 复制订单上架 (CopyOnSale)
      *
      * @param array $data 请求数据
      * @return array 响应数据
@@ -148,13 +160,13 @@ class GoodsApi
     }
 
     /**
-     * 订单参考价查询
+     * 查询参考价格,包含平台最低价、寄售最低价、最近成交均价、全新市场价、平台限价(3C专属,为最高出价限制)。
      *
      * @param array $data 请求数据
      * @return array 响应数据
      * @throws ApiException
      */
-    public function getReferencePrice(array $data = []): array
+    public function referencePrice(array $data = []): array
     {
         return $this->client->request('/api_tob/referencePrice/v1.0', $data);
     }
