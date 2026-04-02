@@ -2,7 +2,7 @@
 <?php
 /**
  * PHP SDK API 类生成器
- * 自动从 api-definitions.json 生成 SDK 代码。
+ * 自动从 api-definitions.json 生成 SDK 代码；PHPDoc 中带树状层级请求/响应字段说明。
  */
 
 $baseDir = __DIR__ . '/src/Api';
@@ -26,10 +26,70 @@ function toCamelCase($string) {
     return $camelCase;
 }
 
+/**
+ * 点分路径建树：segment => [ param|null, children ]
+ */
+function buildParamTree(array $params): array {
+    $tree = [];
+    foreach ($params as $p) {
+        $name = $p['name'] ?? '';
+        $parts = array_values(array_filter(explode('.', $name), function ($x) {
+            return $x !== '';
+        }));
+        if (count($parts) === 0) {
+            continue;
+        }
+        $cur = &$tree;
+        foreach ($parts as $i => $part) {
+            if (!isset($cur[$part])) {
+                $cur[$part] = ['param' => null, 'children' => []];
+            }
+            if ($i === count($parts) - 1) {
+                $cur[$part]['param'] = $p;
+            }
+            $cur = &$cur[$part]['children'];
+        }
+    }
+    return $tree;
+}
+
+/**
+ * @return string[] 无前缀的说明行
+ */
+function formatParamTreeLines(array $tree, string $basePath, int $depth): array {
+    $lines = [];
+    ksort($tree);
+    foreach ($tree as $seg => $node) {
+        $path = $basePath === '' ? $seg : ($basePath . '.' . $seg);
+        $prefix = str_repeat('  ', 2 + $depth);
+        if ($node['param'] !== null) {
+            $pp = $node['param'];
+            $typ = $pp['type'] ?? 'mixed';
+            $req = !empty($pp['required']) ? '必填' : '选填';
+            $d = isset($pp['description']) ? trim((string) $pp['description']) : '';
+            $descSuffix = $d !== '' ? (': ' . $d) : '';
+            $lines[] = $prefix . '- ' . $path . ' (' . $typ . ', ' . $req . ')' . $descSuffix;
+        }
+        if (!empty($node['children'])) {
+            $lines = array_merge($lines, formatParamTreeLines($node['children'], $path, $depth + 1));
+        }
+    }
+    return $lines;
+}
+
+function hierarchyDocBlockLines(array $params): array {
+    if (empty($params)) {
+        return ['    （无）'];
+    }
+    $tree = buildParamTree($params);
+    $lines = formatParamTreeLines($tree, '', 0);
+    return $lines ?: ['    （无）'];
+}
+
 function generateApiClass($moduleName, $apis)
 {
     $className = ucfirst($moduleName) . "Api";
-    
+
     $code = "<?php\n\n";
     $code .= "namespace JiuWuFen\\Sdk\\Api;\n\n";
     $code .= "use JiuWuFen\\Sdk\\JiuWuFenClient;\n";
@@ -54,17 +114,29 @@ function generateApiClass($moduleName, $apis)
     $code .= "    {\n";
     $code .= "        \$this->client = \$client;\n";
     $code .= "    }\n";
-    
+
     foreach ($apis as $api) {
         $methodName = toCamelCase($api['id']);
         $path = $api['path'];
         $doc = !empty($api['description']) ? $api['description'] : $api['name'];
-        
+        $reqLines = hierarchyDocBlockLines($api['requestParams'] ?? []);
+        $respLines = hierarchyDocBlockLines($api['responseParams'] ?? []);
+
         $code .= "\n";
         $code .= "    /**\n";
         $code .= "     * {$doc}\n";
         $code .= "     *\n";
-        $code .= "     * @param array \$data 请求数据\n";
+        $code .= "     * 请求体字段（树状层级，与文档点分路径一致）:\n";
+        foreach ($reqLines as $L) {
+            $code .= "     * {$L}\n";
+        }
+        $code .= "     *\n";
+        $code .= "     * 响应字段（树状层级，对照文档）:\n";
+        foreach ($respLines as $L) {
+            $code .= "     * {$L}\n";
+        }
+        $code .= "     *\n";
+        $code .= "     * @param array \$data 完整请求体（须包含各层级嵌套结构）\n";
         $code .= "     * @return array 响应数据\n";
         $code .= "     * @throws ApiException\n";
         $code .= "     */\n";
@@ -73,9 +145,9 @@ function generateApiClass($moduleName, $apis)
         $code .= "        return \$this->client->request('{$path}', \$data);\n";
         $code .= "    }\n";
     }
-    
+
     $code .= "}\n";
-    
+
     return $code;
 }
 
@@ -95,11 +167,11 @@ $generatedClasses = [];
 
 foreach ($modules as $moduleName => $apis) {
     if (empty($moduleName)) continue;
-    
+
     $className = ucfirst($moduleName) . 'Api';
     $code = generateApiClass($moduleName, $apis);
     $filePath = $baseDir . '/' . $className . '.php';
-    
+
     file_put_contents($filePath, $code);
     echo "✅ 生成: Api/{$className}.php\n";
     $generatedClasses[$moduleName] = $className;
@@ -110,34 +182,11 @@ $clientPath = __DIR__ . '/src/JiuWuFenClient.php';
 if (file_exists($clientPath)) {
     $clientCode = file_get_contents($clientPath);
 
-    // 重建 use 声明块
     $useBlock = '';
     foreach ($generatedClasses as $modName => $cls) {
         $useBlock .= "use JiuWuFen\\Sdk\\Api\\{$cls};\n";
     }
 
-    // 重建属性声明
-    $propBlock = '';
-    foreach ($generatedClasses as $modName => $cls) {
-        $varName = lcfirst($cls);
-        $propBlock .= "    private {$cls} \${$varName};\n";
-    }
-
-    // 重建初始化代码
-    $initBlock = '';
-    foreach ($generatedClasses as $modName => $cls) {
-        $varName = lcfirst($cls);
-        $initBlock .= "        \$this->{$varName} = new {$cls}(\$this);\n";
-    }
-
-    // 重建 getter 方法
-    $getterBlock = '';
-    foreach ($generatedClasses as $modName => $cls) {
-        $varName = lcfirst($cls);
-        $getterBlock .= "\n    public function get{$cls}(): {$cls}\n    {\n        return \$this->{$varName};\n    }\n";
-    }
-
-    // 替换 use 导入块（从第一个 Api use 到 use JiuWuFen\Sdk\Exception）
     $clientCode = preg_replace(
         '/use JiuWuFen\\\\Sdk\\\\Api\\\\.*?;(\nuse JiuWuFen\\\\Sdk\\\\Api\\\\.*?;)*\n/',
         $useBlock,
