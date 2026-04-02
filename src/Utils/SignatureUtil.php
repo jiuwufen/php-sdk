@@ -41,6 +41,9 @@ class SignatureUtil
      */
     public function generateSignature(array $params): string
     {
+        // 与其它 SDK / GenSign 一致：整型语义的 float 归一为 int，避免 json_encode 差异
+        $params = $this->normalizeIntegralTree($params);
+
         // 1. 获取所有 Keys 并排序（排除 token 本身）
         $keys = array_keys($params);
         $keys = array_filter($keys, function ($key) {
@@ -48,14 +51,13 @@ class SignatureUtil
         });
         sort($keys);
 
-        // 2. 拼接参数值
+        // 2. 拼接参数值（仅 string 原样拼接，其余 json_encode，含 null→null）
         $paramsStr = '';
         foreach ($keys as $key) {
             $value = $params[$key];
             if (is_string($value)) {
                 $paramsStr .= $value;
-            } elseif ($value !== null) {
-                // 复杂类型转 JSON（需要递归排序 Key）
+            } else {
                 $paramsStr .= json_encode(
                     $this->sortArrayKeys($value),
                     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -140,6 +142,43 @@ class SignatureUtil
     }
 
     /**
+     * 递归将「数学上为整数」的 float 转为 int（不修改调用方传入的数组，返回新树）
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function normalizeIntegralTree(array $params): array
+    {
+        $out = [];
+        foreach ($params as $k => $v) {
+            $out[$k] = $this->normalizeIntegralValue($v);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param mixed $v
+     * @return mixed
+     */
+    private function normalizeIntegralValue($v)
+    {
+        if (is_array($v)) {
+            $next = [];
+            foreach ($v as $k => $item) {
+                $next[$k] = $this->normalizeIntegralValue($item);
+            }
+
+            return $next;
+        }
+        if (is_float($v) && is_finite($v) && $v == floor($v) && $v >= PHP_INT_MIN && $v <= PHP_INT_MAX) {
+            return (int) $v;
+        }
+
+        return $v;
+    }
+
+    /**
      * 递归排序数组的 Keys
      *
      * @param mixed $obj 要排序的对象
@@ -152,8 +191,10 @@ class SignatureUtil
             foreach ($obj as $key => $value) {
                 $obj[$key] = $this->sortArrayKeys($value);
             }
+
             return $obj;
         }
+
         return $obj;
     }
 }

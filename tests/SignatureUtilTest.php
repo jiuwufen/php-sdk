@@ -83,4 +83,26 @@ class SignatureUtilTest extends TestCase
         // 相同参数应该生成相同的签名
         $this->assertEquals($signature1, $signature2);
     }
+
+    public function testNullFieldContributesNullLiteral(): void
+    {
+        $withNull = ['a' => null, 'b' => 'x'];
+        $withoutA = ['b' => 'x'];
+
+        $this->assertNotEquals(
+            $this->util->generateSignature($withoutA),
+            $this->util->generateSignature($withNull)
+        );
+    }
+
+    public function testFloatWholeNumberMatchesInt(): void
+    {
+        $withInt = ['imei' => 'x', 'sku_id' => 12];
+        $withFloat = ['imei' => 'x', 'sku_id' => 12.0];
+
+        $this->assertSame(
+            $this->util->generateSignature($withInt),
+            $this->util->generateSignature($withFloat)
+        );
+    }
 }
